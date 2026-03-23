@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-const resendApiKey = process.env.RESEND_API_KEY;
-const resend = new Resend(resendApiKey);
-
 export async function POST(req: Request) {
   try {
     const { email } = await req.json();
+    const resendApiKey = process.env.RESEND_API_KEY;
 
     if (!resendApiKey) {
       console.warn("API Key Resend tidak ditemukan.");
       return NextResponse.json({ error: "Missing API Key" }, { status: 500 });
     }
+
+    const resend = new Resend(resendApiKey);
 
     const data = await resend.emails.send({
       from: 'StudySync <onboarding@resend.dev>',
