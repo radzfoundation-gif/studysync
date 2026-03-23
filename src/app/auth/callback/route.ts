@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const requestedRole = searchParams.get('role');
 
   if (code) {
-    // Create an initial response object to attach cookies to
+    // Initial redirect to 'next' as fallback, but we will likely override this
     const response = NextResponse.redirect(new URL(next, request.url));
     
     const supabase = createServerClient(
@@ -17,13 +17,14 @@ export async function GET(request: Request) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          get(name: string) {
-            return cookies().then(store => store.get(name)?.value);
+          async get(name: string) {
+            const cookieStore = await cookies();
+            return cookieStore.get(name)?.value;
           },
-          set(name: string, value: string, options: CookieOptions) {
+          async set(name: string, value: string, options: CookieOptions) {
             response.cookies.set({ name, value, ...options });
           },
-          remove(name: string, options: CookieOptions) {
+          async remove(name: string, options: CookieOptions) {
             response.cookies.set({ name, value: '', ...options });
           },
         },
@@ -40,7 +41,6 @@ export async function GET(request: Request) {
         const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
 
         if (requestedRole) {
-          // Priority 1: User explicitly asked for a role (e.g. Mulai Sebagai Guru)
           await supabase.from('profiles').upsert({ 
             id: user.id, 
             role: requestedRole,
@@ -50,24 +50,34 @@ export async function GET(request: Request) {
           await supabase.auth.updateUser({ data: { role: requestedRole } });
           userRole = requestedRole;
         } else if (profile?.role) {
-          // Priority 2: Use existing role from DB
           userRole = profile.role;
         } else {
-          // New user with no requested role -> Role Selection
-          return NextResponse.redirect(new URL('/auth/role-selection', request.url));
+          // If no role, go to selection screen
+          const selectionResponse = NextResponse.redirect(new URL('/auth/role-selection', request.url));
+          // Important: Copy cookies to the new response
+          response.cookies.getAll().forEach(cookie => {
+            selectionResponse.cookies.set(cookie);
+          });
+          return selectionResponse;
         }
 
         const finalUrl = userRole === 'teacher' ? '/dashboard-teacher' : '/dashboard';
-        return NextResponse.redirect(new URL(finalUrl, request.url));
+        const finalResponse = NextResponse.redirect(new URL(finalUrl, request.url));
+        
+        // Ensure all auth cookies are transferred to the final redirect
+        response.cookies.getAll().forEach(cookie => {
+          finalResponse.cookies.set(cookie);
+        });
+        
+        return finalResponse;
       }
-      
-      // If user but no logic matched, just send to response we initialized
-      return response;
     } else {
       console.error("Auth callback exchange error:", error.message);
+      return NextResponse.redirect(`${origin}/?error=auth_failed&message=${encodeURIComponent(error.message)}`);
     }
   }
 
-  // Fallback to landing page if something goes wrong
-  return NextResponse.redirect(`${origin}/?error=auth_failed`);
+  // Fallback if no code or other failure
+  const errorMsg = searchParams.get('error_description') || 'No code provided';
+  return NextResponse.redirect(`${origin}/?error=auth_failed&message=${encodeURIComponent(errorMsg)}`);
 }
