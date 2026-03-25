@@ -73,7 +73,7 @@ export async function updateSession(request: NextRequest) {
       .eq('id', user.id)
       .single()
     
-    const redirectUrl = profile?.role === 'teacher' ? '/dashboard-teacher' : '/dashboard'
+    const redirectUrl = profile?.role === 'teacher' ? '/dashboard-teacher' : profile?.role === 'admin' ? '/dashboard-admin' : profile?.role === 'staff' ? '/dashboard-staff' : '/dashboard'
     return NextResponse.redirect(new URL(redirectUrl, request.url))
   }
 

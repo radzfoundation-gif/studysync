@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import LoadingScreen from "@/components/LoadingScreen";
 import StatusModal from "@/components/StatusModal";
+import HardwareTest from "@/components/HardwareTest";
 
 export default function AdminDashboardPage() {
   const { user, profile, loading: authLoading } = useAuth();
@@ -300,12 +301,15 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* Danger Zone */}
-          <div className="space-y-4">
-             <h2 className="text-sm font-black text-error uppercase tracking-widest flex items-center gap-2 px-2">
-                <span className="material-symbols-outlined text-[18px]">warning</span>
-                Danger Zone
-              </h2>
+          {/* Danger Zone & Hardware Test */}
+          <div className="space-y-6">
+             <HardwareTest />
+             
+             <div className="space-y-4">
+                <h2 className="text-sm font-black text-error uppercase tracking-widest flex items-center gap-2 px-2">
+                   <span className="material-symbols-outlined text-[18px]">warning</span>
+                   Danger Zone
+                </h2>
               
               <div className="bg-error-container/5 rounded-3xl border border-error/10 p-6 space-y-6">
                 <div className="space-y-2">
@@ -353,6 +357,7 @@ export default function AdminDashboardPage() {
                    </p>
                 </div>
               </div>
+          </div>
           </div>
         </div>
       </main>

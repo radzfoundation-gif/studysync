@@ -56,7 +56,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  const fetchProfile = async (userId: string) => {
+    const fetchProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -69,7 +69,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // This can happen if the trigger hasn't finished or the profile was deleted
         if (error.code === 'PGRST116') {
           console.warn('Profile not found for user:', userId);
-          setProfile(null);
+          // Create missing profile with role from metadata if available, else default student
+          const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+          if (sessionError) {
+            console.error('Session error:', sessionError);
+            setProfile(null);
+            return;
+          }
+          const session = sessionData?.session;
+          const userMeta = session?.user?.user_metadata ?? {};
+          const roleFromMeta = userMeta?.role as 'student' | 'teacher' | 'staff' | 'admin' ?? 'student';
+          // Do not overwrite existing role; only insert if missing
+          const { error: insertError } = await supabase.from('profiles').insert({
+            id: userId,
+            email: session?.user?.email ?? '',
+            full_name: userMeta?.full_name ?? 'User',
+            role: roleFromMeta,
+          });
+          if (insertError) {
+            console.error('Failed to create missing profile:', insertError);
+          } else {
+            // Refetch after insert
+            const { data: newData, error: fetchError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', userId)
+              .single();
+            if (!fetchError && newData) {
+              setProfile(newData);
+            }
+          }
         } else {
           console.error('Error fetching profile:', error.message || error);
         }
@@ -78,8 +107,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     } catch (error: any) {
       console.error('Unexpected error fetching profile:', error.message || error);
-    } finally {
-      setLoading(false);
+      setProfile(null);
     }
   };
 

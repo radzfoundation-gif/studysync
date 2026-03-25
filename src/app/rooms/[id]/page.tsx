@@ -8,6 +8,7 @@ import AttendanceModal from "@/components/AttendanceModal";
 import VideoCallOverlay from "@/components/VideoCallOverlay";
 import { useAuth } from "@/context/AuthContext";
 import LoadingScreen from "@/components/LoadingScreen";
+import StatusModal from "@/components/StatusModal";
 
 export default function RoomDetailsPage() {
   const { user, profile, loading: authLoading, signOut } = useAuth();
@@ -29,6 +30,12 @@ export default function RoomDetailsPage() {
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
   const [isAttendanceLoading, setIsAttendanceLoading] = useState(false);
   const [isVideoActive, setIsVideoActive] = useState(false);
+  const [statusModal, setStatusModal] = useState({
+    isOpen: false,
+    type: 'success' as 'success' | 'error' | 'info',
+    title: '',
+    message: ''
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const aiMessagesEndRef = useRef<HTMLDivElement>(null);
@@ -184,6 +191,10 @@ export default function RoomDetailsPage() {
     setAiInput("");
     setIsAiLoading(true);
 
+    const showStatus = (type: 'success' | 'error' | 'info', title: string, message: string) => {
+      setStatusModal({ isOpen: true, type, title, message });
+    };
+
     // Mock AI Response - In a real app, call OpenAI/Gemini API here
     setTimeout(() => {
       const responses = [
@@ -205,45 +216,101 @@ export default function RoomDetailsPage() {
 
   const submitAttendance = async (data: { name: string; className: string; studentNumber: string; nisn: string; photo?: File | null }) => {
     setIsAttendanceLoading(true);
-    
-    let photoUrl = "";
-    if (data.photo) {
-      const fileExt = data.photo.name.split('.').pop();
-      const fileName = `${user?.id || 'anon'}-${Date.now()}.${fileExt}`;
-      const filePath = `attendance/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('attendance_photos')
-        .upload(filePath, data.photo);
-
-      if (!uploadError) {
-        const { data: { publicUrl } } = supabase.storage
-          .from('attendance_photos')
-          .getPublicUrl(filePath);
-        photoUrl = publicUrl;
-      } else {
-        console.error("Gagal upload foto absensi:", uploadError.message);
+    try {
+      // 1. Calculate Attendance Day Start (6 AM Reset)
+      const now = new Date();
+      const today6AM = new Date(now);
+      today6AM.setHours(6, 0, 0, 0);
+      
+      let dayStart = today6AM;
+      if (now < today6AM) {
+        // If before 6 AM today, the attendance day started at 6 AM yesterday
+        dayStart = new Date(today6AM);
+        dayStart.setDate(dayStart.getDate() - 1);
       }
-    }
-    
-    const { error } = await supabase.from('attendance').insert([{
-      class_id: roomId,
-      student_name: data.name,
-      class_name: data.className,
-      student_number: data.studentNumber,
-      nisn: data.nisn,
-      photo_url: photoUrl
-    }]);
 
-    if (!error || error.code === '23505') {
-      setHasCheckedIn(true);
-      setIsAttendanceModalOpen(false);
-      localStorage.setItem('studysync_name', data.name);
-      if (data.nisn) localStorage.setItem('studysync_nisn', data.nisn);
-    } else {
-      alert("Gagal absen: " + error.message);
+      // 2. Check for existing attendance in this window
+      const { data: existing, error: checkError } = await supabase
+        .from('attendance')
+        .select('id')
+        .eq('class_id', roomId)
+        .eq('nisn', data.nisn)
+        .gte('joined_at', dayStart.toISOString())
+        .limit(1);
+
+      if (checkError) throw checkError;
+
+      if (existing && existing.length > 0) {
+        setStatusModal({
+          isOpen: true,
+          type: 'info',
+          title: 'Sudah Absen',
+          message: 'Anda sudah melakukan absensi untuk kelas ini hari ini (Reset setiap jam 6 pagi).'
+        });
+        setIsAttendanceLoading(false);
+        return;
+      }
+      
+      let photoUrl = "";
+      if (data.photo) {
+        const fileExt = data.photo.name.split('.').pop();
+        const fileName = `${user?.id || 'anon'}-${Date.now()}.${fileExt}`;
+        const filePath = `attendance/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('attendance_photos')
+          .upload(filePath, data.photo);
+
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('attendance_photos')
+            .getPublicUrl(filePath);
+          photoUrl = publicUrl;
+        } else {
+          console.error("Gagal upload foto absensi:", uploadError.message);
+        }
+      }
+      
+      const { error } = await supabase.from('attendance').insert([{
+        class_id: roomId,
+        student_name: data.name,
+        class_name: data.className,
+        student_number: data.studentNumber,
+        nisn: data.nisn,
+        photo_url: photoUrl
+      }]);
+
+      if (!error || error.code === '23505') {
+        setHasCheckedIn(true);
+        setIsAttendanceModalOpen(false);
+        localStorage.setItem('studysync_name', data.name);
+        if (data.nisn) localStorage.setItem('studysync_nisn', data.nisn);
+        
+        setStatusModal({
+          isOpen: true,
+          type: 'success',
+          title: 'Berhasil Absen!',
+          message: 'Kehadiran Anda telah dicatat oleh sistem StudySync.'
+        });
+      } else {
+        setStatusModal({
+          isOpen: true,
+          type: 'error',
+          title: 'Gagal Absen',
+          message: error.message
+        });
+      }
+    } catch (err: any) {
+      setStatusModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Kesalahan Sistem',
+        message: err.message
+      });
+    } finally {
+      setIsAttendanceLoading(false);
     }
-    setIsAttendanceLoading(false);
   };
 
   if (authLoading || loading) {
@@ -255,6 +322,47 @@ export default function RoomDetailsPage() {
   if (!room) return null;
 
   const initial = room.name ? room.name.substring(0, 2).toUpperCase() : 'SS';
+
+  const renderFormattedContent = (content: string) => {
+    if (!content) return null;
+    
+    // Split by markdown links [text](url) and bold **text**
+    const parts = content.split(/(\[.*?\]\(.*?\))|(\*\*.*?\*\*)/g);
+    
+    return parts.map((part, i) => {
+      if (!part) return null;
+      
+      // Match [text](url)
+      const linkMatch = part.match(/\[(.*?)\]\((.*?)\)/);
+      if (linkMatch) {
+        const [_, text, url] = linkMatch;
+        const isInternal = url.startsWith('/');
+        if (isInternal) {
+          return (
+            <Link key={i} href={url} className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary/10 text-primary font-bold rounded-xl hover:bg-primary hover:text-white transition-all my-1.5 shadow-sm hover:shadow-md active:scale-95 border border-primary/20">
+              <span className="material-symbols-outlined text-[18px]">play_circle</span>
+              {text}
+            </Link>
+          );
+        }
+        return <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-primary font-bold underline decoration-2 underline-offset-4 hover:text-primary-active transition-colors">{text}</a>;
+      }
+      
+      // Match **text**
+      const boldMatch = part.match(/\*\*(.*?)\*\*/);
+      if (boldMatch) {
+        return <strong key={i} className="font-extrabold text-on-surface">{boldMatch[1]}</strong>;
+      }
+      
+      // Handle newlines and plain text
+      return part.split('\n').map((line, j, array) => (
+        <span key={`${i}-${j}`}>
+          {line}
+          {j < array.length - 1 && <br />}
+        </span>
+      ));
+    });
+  };
 
   return (
     <div className="bg-surface-container-lowest text-on-surface min-h-screen flex flex-col font-body selection:bg-primary-container selection:text-on-primary-container">
@@ -390,8 +498,8 @@ export default function RoomDetailsPage() {
                               )}
                             </div>
                           ) : (
-                            <div className="p-4 rounded-2xl shadow-sm text-sm leading-relaxed bg-white border border-outline-variant/20 rounded-tl-none">
-                              {msg.content}
+                            <div className="p-4 rounded-2xl shadow-sm text-sm leading-relaxed bg-white border border-outline-variant/20 rounded-tl-none whitespace-pre-wrap">
+                              {renderFormattedContent(msg.content)}
                             </div>
                           )}
                         </div>
@@ -566,6 +674,14 @@ export default function RoomDetailsPage() {
         onClose={() => setIsVideoActive(false)} 
         roomName={room.name} 
         userName={profile?.full_name || user?.email?.split('@')[0] || "Siswa"}
+      />
+
+      <StatusModal
+        isOpen={statusModal.isOpen}
+        onClose={() => setStatusModal({ ...statusModal, isOpen: false })}
+        type={statusModal.type}
+        title={statusModal.title}
+        message={statusModal.message}
       />
     </div>
   );

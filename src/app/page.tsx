@@ -58,11 +58,11 @@ export default function LandingPage() {
             </Link>
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={() => openAuth('student', 'login')} className="text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 px-4 py-2 rounded transition-all duration-200 text-sm font-medium">
-              Login
-            </button>
-            <button onClick={() => openAuth('student', 'register')} className="bg-primary text-white px-5 py-2 rounded-lg font-semibold hover:opacity-90 active:scale-95 transition-all text-sm">
-              Join Free
+            <Link href="/auth/staff" className="text-tertiary hover:bg-tertiary-container/20 px-4 py-2 rounded transition-all duration-200 text-sm font-bold">
+              Portal Tata Usaha
+            </Link>
+            <button onClick={() => openAuth('teacher', 'login')} className="bg-primary text-white px-5 py-2 rounded-lg font-semibold hover:opacity-90 active:scale-95 transition-all text-sm">
+              Masuk
             </button>
           </div>
         </div>
@@ -91,14 +91,14 @@ export default function LandingPage() {
                 onClick={() => openAuth('teacher', 'login')} 
                 className="w-full sm:w-auto px-8 py-4 bg-primary text-on-primary rounded-xl font-bold text-lg shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
               >
-                <span className="material-symbols-outlined">psychology</span>
-                Mulai Sebagai Guru
+                <span className="material-symbols-outlined">school</span>
+                Masuk sebagai Guru
               </button>
               <Link 
                 href="/siswa" 
                 className="w-full sm:w-auto px-8 py-4 bg-white text-on-surface border border-outline-variant rounded-xl font-bold text-lg hover:bg-surface-container-low transition-all flex items-center justify-center gap-2"
               >
-                <span className="material-symbols-outlined">school</span>
+                <span className="material-symbols-outlined">person</span>
                 Portal Siswa
               </Link>
             </div>
@@ -382,7 +382,7 @@ export default function LandingPage() {
             <ul className="space-y-4">
               <li><Link href="#" className="text-slate-500 hover:text-blue-500 underline decoration-2 underline-offset-4 text-sm transition-colors duration-200">Help Center</Link></li>
               <li><Link href="#" className="text-slate-500 hover:text-blue-500 underline decoration-2 underline-offset-4 text-sm transition-colors duration-200">Privacy Policy</Link></li>
-              <li><Link href="#" className="text-slate-500 hover:text-blue-500 underline decoration-2 underline-offset-4 text-sm transition-colors duration-200">Terms of Service</Link></li>
+              <li><Link href="/auth/staff" className="text-tertiary hover:text-orange-600 underline decoration-2 underline-offset-4 text-sm font-bold transition-colors duration-200">Portal Tata Usaha</Link></li>
             </ul>
           </div>
         </div>

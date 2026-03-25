@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 interface ManualQuizBuilderProps {
-  onSave: (title: string, questionCount: number) => void;
+  onSave: (title: string, questions: any[]) => void;
   onCancel: () => void;
 }
 
@@ -22,7 +22,7 @@ export default function ManualQuizBuilder({ onSave, onCancel }: ManualQuizBuilde
        return alert("Terdapat soal yang pertanyaannya masih kosong. Harap isi atau hapus soal tersebut.");
     }
 
-    onSave(title, questions.length);
+    onSave(title, questions);
   };
 
   const updateQuestion = (qIndex: number, field: string, value: any, optIndex?: number) => {

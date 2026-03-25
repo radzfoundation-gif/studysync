@@ -57,8 +57,7 @@ export default function RoomsPage() {
         name: finalName,
         subject: "Kelas Sinkron",
         members_count: 1,
-        icon: 'cast_for_education',
-        user_id: user.id
+        icon: 'cast_for_education'
       }]);
       
       if (error) throw new Error(error.message);
@@ -78,8 +77,7 @@ export default function RoomsPage() {
         name: classData?.name || "Kelas Baru",
         subject: classData?.grade || "Kelas Sinkron",
         members_count: 1,
-        icon: 'cast_for_education',
-        user_id: user.id
+        icon: 'cast_for_education'
       }]);
       
       if (error) throw new Error(error.message);

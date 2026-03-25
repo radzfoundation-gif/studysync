@@ -5,9 +5,10 @@ import React from 'react';
 interface LoadingScreenProps {
   fullScreen?: boolean;
   message?: string;
+  progress?: number;
 }
 
-export default function LoadingScreen({ fullScreen = true, message = "Memuat StudySync..." }: LoadingScreenProps) {
+export default function LoadingScreen({ fullScreen = true, message = "Memuat StudySync...", progress }: LoadingScreenProps) {
   return (
     <div className={`${fullScreen ? 'fixed inset-0 z-[100]' : 'w-full h-full min-h-[400px] rounded-3xl overflow-hidden'} flex flex-col items-center justify-center bg-surface/90 backdrop-blur-md`}>
       <div className="relative w-28 h-28 flex items-center justify-center mb-6">
@@ -22,17 +23,34 @@ export default function LoadingScreen({ fullScreen = true, message = "Memuat Stu
       </div>
       
       {/* Animated Text */}
-      <h2 className="text-xl font-black font-headline text-on-surface tracking-tight flex items-center gap-1">
-        {message.split('').map((char, i) => (
-          <span 
-            key={i} 
-            className="animate-[bounce_1.5s_infinite]" 
-            style={{ animationDelay: `${i * 0.05}s`, display: char === ' ' ? 'inline-block' : 'inline', width: char === ' ' ? '6px' : 'auto' }}
-          >
-            {char}
-          </span>
-        ))}
-      </h2>
+      <div className="flex flex-col items-center gap-4">
+        <h2 className="text-xl font-black font-headline text-on-surface tracking-tight flex items-center gap-1">
+          {message.split('').map((char, i) => (
+            <span 
+              key={i} 
+              className="animate-[bounce_1.5s_infinite]" 
+              style={{ animationDelay: `${i * 0.05}s`, display: char === ' ' ? 'inline-block' : 'inline', width: char === ' ' ? '6px' : 'auto' }}
+            >
+              {char}
+            </span>
+          ))}
+        </h2>
+
+        {progress !== undefined && (
+          <div className="w-64 space-y-2">
+            <div className="flex justify-between text-[10px] font-black text-primary uppercase tracking-widest">
+              <span>Progress</span>
+              <span>{Math.round(progress)}%</span>
+            </div>
+            <div className="w-full bg-surface-container-high rounded-full h-1.5 overflow-hidden border border-outline-variant/10">
+              <div 
+                className="bg-primary h-full rounded-full transition-all duration-300 ease-out shadow-[0_0_10px_rgb(0,119,255,0.4)]" 
+                style={{ width: `${progress}%` }}
+              ></div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
